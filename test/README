@@ -20,3 +20,6 @@ main
  + update_mag()  -> update_my_mag()
  + read_mag() -> read_my_mag()
  + mpu.update->mpu.my_update
+
+ + collect_mag_data_to = > collect_my_mag_data_to
+ 
