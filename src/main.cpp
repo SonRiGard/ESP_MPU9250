@@ -1,108 +1,84 @@
 #include "MPU9250.h"
-#include "SoftwareSerial.h"
-#include <Wire.h>
-//#include "mpu9250_gy271.h"
-#include "math.h"
 
-#define pi 3.141592653589793238462
-float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-float a12, a22, a31, a32, a33;
-extern float roll,yaw,pitch;
-extern float yaw1, yaw2, yaw3;
+uint8_t addrs[7] = {0};
+uint8_t device_count = 0;
 
-uint32_t newTime{0}, oldTime{0};
-extern float deltaT;
-
-//#include "SoftwareSerial.h"
-MPU9250 mpu;
-
-
-void print_roll_pitch_yaw();
-
-void setup() {
-    Serial.begin(9600);
-    Wire.begin();
-    delay(5000);
-
-    if (!mpu.mysetup(0x68)) {  // change to your own address
-        while (1) {
-            Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-            delay(5000);
+template <typename WireType = TwoWire>
+void scan_mpu(WireType& wire = Wire) {
+    Serial.println("Searching for i2c devices...");
+    device_count = 0;
+    for (uint8_t i = 0x10; i < 0x20; ++i) {
+        wire.beginTransmission(i);
+        if (wire.endTransmission() == 0) {
+            addrs[device_count++] = i;
+            delay(10);
         }
     }
-    // print_calibration();
+    Serial.print("Found ");
+    Serial.print(device_count, DEC);
+    Serial.println(" I2C devices");
+
+    Serial.print("I2C addresses are: ");
+    for (uint8_t i = 0; i < device_count; ++i) {
+        Serial.print("0x");
+        Serial.print(addrs[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
 }
 
-void loop()
-{
-        // if (mpu.my_update()) {
-        //     static uint32_t prev_ms = millis();
-        //     if (millis() > prev_ms + 25) {
-        //         print_roll_pitch_yaw();
-        //        prev_ms = millis();
-        //     }
-        // }
-        newTime = micros();
-        deltaT = newTime - oldTime;
-        // Serial.print(newTime);       Serial.print(",");
-        // Serial.print(oldTime);       Serial.print(",");
-        oldTime = newTime;
-        deltaT = deltaT * 0.001 * 0.001;
+template <typename WireType = TwoWire>
+uint8_t readByte(uint8_t address, uint8_t subAddress, WireType& wire = Wire) {
+    uint8_t data = 0;
+    wire.beginTransmission(address);
+    wire.write(subAddress);
+    wire.endTransmission(false);
+    wire.requestFrom(address, (size_t)1);
+    if (wire.available()) data = wire.read();
+    return data;
+}
 
-        mpu.Process_IMU();
+void setup() {
+    Serial.begin(115200);
+    Serial.flush();
+    Wire.begin();
+    delay(2000);
 
+    scan_mpu();
 
-        //Serial.print(yaw);        Serial.print(",");
-        Serial.print(yaw2);        Serial.print(",");
-        Serial.print(yaw3);        Serial.print(",");
+    if (device_count == 0) {
+        Serial.println("No device found on I2C bus. Please check your hardware connection");
+        while (1)
+            ;
+    }
 
-        // Serial.print(Gyro_X);        Serial.print(",");
-        // Serial.print(Gyro_Y);        Serial.print(",");
-        // Serial.print(Gyro_Z);        Serial.print(",");
-        Serial.print(Accel_X);        Serial.print(",");
-        Serial.print(Accel_Y);        Serial.print(",");
-        Serial.print(Accel_Z);        Serial.print(",");
-        // Serial.print(Mag_X);        Serial.print(",");
-        // Serial.print(Mag_Y);        Serial.print(",");
-        // Serial.println(-Mag_Z);       //Serial.print(",");
+    // check WHO_AM_I address of MPU
+    for (uint8_t i = 0; i < device_count; ++i) {
+        Serial.print("I2C address 0x");
+        Serial.print(addrs[i], HEX);
+        byte ca = readByte(addrs[i], WHO_AM_I_MPU9250);
+        if (ca == MPU9250_WHOAMI_DEFAULT_VALUE) {
+            Serial.println(" is MPU9250 and ready to use");
+        } else if (ca == MPU9255_WHOAMI_DEFAULT_VALUE) {
+            Serial.println(" is MPU9255 and ready to use");
+        } else if (ca == MPU6500_WHOAMI_DEFAULT_VALUE) {
+            Serial.println(" is MPU6500 and ready to use");
+        } else {
+            Serial.println(" is not MPU series");
+            Serial.print("WHO_AM_I is ");
+            Serial.println(ca, HEX);
+            Serial.println("Please use correct device");
+        }
+        static constexpr uint8_t AK8963_ADDRESS {0x0C};  //  Address of magnetometer
+        static constexpr uint8_t AK8963_WHOAMI_DEFAULT_VALUE {0x48};
+        byte cb = readByte(AK8963_ADDRESS, AK8963_WHO_AM_I);
+        if (cb == AK8963_WHOAMI_DEFAULT_VALUE) {
+            Serial.print("AK8963 (Magnetometer) is ready to use");
+        } else {
+            Serial.print("AK8963 (Magnetometer) was not found");
+        }
+    }
+}
 
-        q[0] = q0;
-        q[1] = q1;
-        q[2] = q2;
-        q[3] = q3;
-        a12 =   2.0f * (q[1] * q[2] + q[0] * q[3]);
-        a22 =   q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
-        a31 =   2.0f * (q[0] * q[1] + q[2] * q[3]);
-        a32 =   2.0f * (q[1] * q[3] - q[0] * q[2]);
-        a33 =   q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3];
-        float sinp = a32;
-        if (fabsf(sinp) >= 1)
-        	pitch = copysign(M_PI/2,sinp);
-        else
-        	pitch =  asin(sinp);
-        //pitch = -asinf(a32);
-        roll  = atan2f(a31, a33);
-        yaw   = atan2f(a12, a22);
-        pitch *= 180.0f / pi;
-        yaw = atan2f(sinf(yaw),cosf(yaw));
-        yaw   *= 180.0f / pi;
-       	roll  *= 180.0f / pi;
-
-        //print_roll_pitch_yaw();
-        // Serial.print("Yaw, Pitch, Roll: ");
-
-        Serial.print(yaw);        Serial.print(",");
-        Serial.print(pitch);        Serial.print(",");
-        Serial.println(roll);
-
-}      
-
-void print_roll_pitch_yaw() {
-    //Serial.print("Yaw, Pitch, Roll: ");
-    Serial.print(yaw);
-    Serial.print(",");
-    Serial.print(pitch);
-    Serial.print(",");
-    Serial.println(roll);
-
+void loop() {
 }
