@@ -48,7 +48,7 @@ volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;	// i
 volatile float beta = 0.1;								// 2 * proportional gain (Kp)
 volatile float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;	// quaternion of sensor frame relative to auxiliary frame
 extern float q[4];
-float deltaT{0.};
+volatile float deltaT{0.};
 
 //---------------------------------------------------------------------------------------------------
 // Function declarations

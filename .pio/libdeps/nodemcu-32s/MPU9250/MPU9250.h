@@ -2,12 +2,15 @@
 #ifndef MPU9250_H
 #define MPU9250_H
 
+#define MPU6050_AND_MAG
+//#define ONLY_MPU6050
 
 #include "SoftwareSerial.h"
 #include "Madgwick.h"
 #include "MPU9250/MPU9250RegisterMap.h"
 #include "MPU9250/QuaternionFilter.h"
 #include "Wire.h"
+
 int16_t Accel_x,Accel_y,Accel_z,Gyro_x,Gyro_y,Gyro_z;
 #define accel_sensitivity 16384.0//8192.0//16384.0      // =  LSB/g
 #define mag_sensitivity    2.56 // Divide raw data by mag_sensitivity to change uT -> mG      raw_Data/(10*4912/32760)
@@ -18,6 +21,16 @@ float Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z;
 float Mag_X,Mag_Y,Mag_Z;
 double Mag_x_scale, Mag_y_scale, Mag_z_scale;
 float Mag_x_bias, Mag_y_bias, Mag_z_bias;
+
+float an ;
+float ae ;
+float ad ;
+float gn ;
+float ge ;
+float gd ;
+float mn ;
+float me ;
+float md ;
 
 extern float deltaT;
 
@@ -185,15 +198,33 @@ public:
         mpu_i2c_addr = addr;
         setting = mpu_setting;
         wire = &w;
-
+#ifdef MPU6050_AND_MAG         
+        init_IMU();//init MPU6050
+        delay(300);
+        Serial.println("IMU configured");
+        init_magnetometer();//init GY271
+        delay(300);
+        Serial.println("MAG configured");
+        Calibration_IMU();//calibration GYRO and ACC
+        delay(300);
+        Serial.println("IMU calibrated");
+        Calib_magnetometer();//calibration MAG
+        delay(300);
+        Serial.println("MAG calibrated");
+        yaw = atan2f(Mag_Y,Mag_X);
+        q0=cos(yaw/2);
+        q1=0;
+        q2=0;
+        q3=sin(yaw/2);
+#endif
+#ifdef ONLY_MPU6050         
         init_IMU();
         delay(300);
-        init_magnetometer();
-        delay(300);
+        Serial.println("IMU configured");
         Calibration_IMU();
         delay(300);
-        Calib_magnetometer();
-        delay(300);
+        Serial.println("IMU calibrated");
+#endif
         // Serial.print("mag_x_bias  : ");Serial.print(Mag_x_bias);
         // Serial.print("mag_y_bias  : ");Serial.print(Mag_y_bias);
         // Serial.print("mag_z_bias  : ");Serial.print(Mag_z_bias);
@@ -617,9 +648,9 @@ void Get_magnetometer()
 	uint8_t COMP[6];
     read_bytes(HMC5883L_ADDRESS, X_MSB, 6, &COMP[0]);
 
-			Mag_x_raw = (int16_t)((int16_t)(COMP[4]<<8) | COMP[5] );
+			Mag_x_raw = (int16_t)((int16_t)(COMP[0]<<8) | COMP[1] );
 			Mag_z_raw = (int16_t)((int16_t)(COMP[2]<<8) | COMP[3] );
-			Mag_y_raw = -(int16_t)((int16_t)(COMP[0]<<8) | COMP[1] );
+			Mag_y_raw = (int16_t)((int16_t)(COMP[4]<<8) | COMP[5] );
             // Serial.print(Mag_x_raw);
             // Serial.print(",");
             // Serial.print(Mag_y_raw);
@@ -627,9 +658,10 @@ void Get_magnetometer()
             // Serial.print(Mag_z_raw);
             // Serial.print(",");
 
+
             Mag_X = ((float)Mag_x_raw * mag_sensitivity - Mag_x_bias)*Mag_x_scale;
             Mag_Y = ((float)Mag_y_raw * mag_sensitivity - Mag_y_bias)*Mag_y_scale;
-            Mag_Z = ((float)Mag_y_raw * mag_sensitivity - Mag_z_bias)*Mag_z_scale;
+            Mag_Z = ((float)Mag_z_raw * mag_sensitivity - Mag_z_bias)*Mag_z_scale;
 }
 
 public:
@@ -755,9 +787,9 @@ void Calib_magnetometer()
 	for (i = 0; i < 1500;i++)
 	{
         read_bytes(HMC5883L_ADDRESS, X_MSB, 6, &raw_data[0]);
-			Mag_x_raw = (int16_t)((int16_t)(raw_data[4]<<8) | raw_data[5] );
+			Mag_x_raw = (int16_t)((int16_t)(raw_data[0]<<8) | raw_data[1] );
 			Mag_z_raw = (int16_t)((int16_t)(raw_data[2]<<8) | raw_data[3] );
-			Mag_y_raw = -(int16_t)((int16_t)(raw_data[0]<<8) | raw_data[1] );
+			Mag_y_raw = (int16_t)((int16_t)(raw_data[4]<<8) | raw_data[5] );
             Serial.print(Mag_x_raw);
             Serial.print(",");
             Serial.print(Mag_y_raw);
@@ -822,7 +854,6 @@ void Process_IMU()
 	Gyro_y = (int16_t)((int16_t)( data[10] << 8 ) | data[11]);
 	Gyro_z = (int16_t)((int16_t)( data[12] << 8 ) | data[13]);
 
-
 	Accel_X = 10*(float)((int32_t)Accel_x - Accel_x_bias)/(float)accel_sensitivity;
 	Accel_Y = 10*(float)((int32_t)Accel_y - Accel_y_bias)/(float)accel_sensitivity;
 	Accel_Z = 10*(float)((int32_t)Accel_z - Accel_z_bias)/(float)accel_sensitivity ;
@@ -830,17 +861,29 @@ void Process_IMU()
 	Gyro_X =  (float)(((int32_t)Gyro_x - Gyro_x_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
 	Gyro_Y =  (float)(((int32_t)Gyro_y - Gyro_y_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
 	Gyro_Z =  (float)(((int32_t)Gyro_z - Gyro_z_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
+    
+        an = -Accel_X;
+        ae = +Accel_Y;
+        ad = +Accel_Z;
+        gn = +Gyro_X;
+        ge = -Gyro_Y;
+        gd = -Gyro_Z;
+        mn = +Mag_Y;
+        me = +Mag_X;
+        md = -Mag_Z;
 
 	// Get data of Magnetometer
+#ifdef MPU6050_AND_MAG
 	Get_magnetometer();
-
-	yaw1 = atan2f(Accel_X,Accel_Y) * 57.2957795;
-    yaw2 = yaw2 + Gyro_Z * deltaT* 57.2957795;
-    yaw3 = atan2f(Mag_X,Mag_Y) * 57.2957795;
-
-
-    // MadgwickAHRSupdateIMU(Gyro_X,Gyro_Y,Gyro_Z,Accel_X,Accel_Y,Accel_Z);
-    MadgwickAHRSupdate(Gyro_X,Gyro_Y,Gyro_Z,Accel_X,Accel_Y,Accel_Z,Mag_X,Mag_Y,-Mag_Z);
+#endif
+    
+#ifdef ONLY_MPU6050
+	MadgwickAHRSupdateIMU(Gyro_X,Gyro_Y,Gyro_Z,Accel_X,Accel_Y,Accel_Z);
+#endif
+#ifdef MPU6050_AND_MAG
+    //MadgwickAHRSupdate(Gyro_X,Gyro_Y,Gyro_Z,Accel_X,Accel_Y,Accel_Z,Mag_X,Mag_Y,-Mag_Z);
+    MahonyAHRSupdate(gn,ge,gd,an,ae,ad,mn,me,md);
+#endif
     //MadgwickQuaternionUpdate(Accel_X,Accel_Y,Accel_Z, Gyro_X,Gyro_Y,Gyro_Z,Mag_X, Mag_Y,Mag_Z);
     //MahonyAHRSupdate(Gyro_X,Gyro_Y,Gyro_Z,Accel_X,Accel_Y,Accel_Z,Mag_X,Mag_Y,Mag_Z);
 }
