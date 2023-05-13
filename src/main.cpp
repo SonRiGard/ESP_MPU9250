@@ -89,7 +89,7 @@ void loop()
         
         yaw2 += gd*deltaT*RAD_TO_DEG;
         yaw3 = atan2f(me,mn)*RAD_TO_DEG;
-
+        //print_Gyro();Serial.print(",");
         Serial.print(yaw2);
         Serial.print(",");
         Serial.print(yaw3);

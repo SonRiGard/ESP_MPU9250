@@ -865,9 +865,9 @@ void Process_IMU()
         an = -Accel_X;
         ae = +Accel_Y;
         ad = +Accel_Z;
-        gn = +Gyro_X;
-        ge = -Gyro_Y;
         gd = -Gyro_Z;
+        gn = +Gyro_X+0.042*gd;
+        ge = -Gyro_Y+0.016*gd;
         mn = +Mag_Y;
         me = +Mag_X;
         md = -Mag_Z;
