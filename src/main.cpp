@@ -1,6 +1,8 @@
 #include "MPU9250.h"
 #include "SoftwareSerial.h"
 #include <Wire.h>
+#include <TinyGPSPlus.h>
+
 //#include "mpu9250_gy271.h"
 #include "math.h"
 #define pi 3.141592653589793238462
@@ -14,15 +16,26 @@ extern float deltaT;
 
 //#include "SoftwareSerial.h"
 MPU9250 mpu;
+static const int RX2Pin = 17, TX2Pin = 16;
+static const uint32_t GPSBaud = 9600;
+// The TinyGPS++ object
+TinyGPSPlus gps;
+// The serial connection to the GPS device
+SoftwareSerial ss(RX2Pin, TX2Pin);
+
+TinyGPSCustom pdop(gps, "GNGLL", 1); // $GPGSA sentence, 15th element
+TinyGPSCustom hdop(gps, "GNGLL", 3); // $GPGSA sentence, 16th element
 
 
 void print_roll_pitch_yaw();
 void print_Gyro(void);
 void print_Acc(void);
 void print_Mag(void);
+void read_GPS (void);
 
 void setup() {
     Serial.begin(9600);
+    /*
     Wire.begin();
     delay(5000);
 
@@ -33,7 +46,16 @@ void setup() {
         }
     }
     oldTime=micros();
+*/
     // print_calibration();
+
+    ss.begin(GPSBaud);
+    Serial.println(F("UsingCustomFields.ino"));
+    Serial.println(F("Demonstrating how to extract any NMEA field using TinyGPSCustom"));
+    Serial.print(F("Testing TinyGPS++ library v. ")); Serial.println(TinyGPSPlus::libraryVersion());
+    Serial.println(F("by Mikal Hart"));
+    Serial.println();
+
 }
 
 void loop()
@@ -53,52 +75,14 @@ void loop()
         oldTime = newTime;
         deltaT = deltaT * 0.001 * 0.001;
 
-        mpu.Process_IMU();
+        //mpu.read_sensor_9dof();
+        read_GPS ();
 
-        // Serial.print(Gyro_X);        Serial.print(",");
-        // Serial.print(Gyro_Y);        Serial.print(",");
-        // Serial.print(Gyro_Z);        Serial.print(",");
-        // Serial.print(Accel_X);        Serial.print(",");
-        // Serial.print(Accel_Y);        Serial.print(",");
-        // Serial.print(Accel_Z);        Serial.print(",");
-        // Serial.print(Mag_X);        Serial.print(",");
-        // Serial.print(Mag_Y);        Serial.print(",");
-        // Serial.println(-Mag_Z);       //Serial.print(",");
-
-        q[0] = q0;
-        q[1] = q1;
-        q[2] = q2;
-        q[3] = q3;
-        a12 =   2.0f * (q[1] * q[2] + q[0] * q[3]);
-        a22 =   q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
-        a31 =   2.0f * (q[0] * q[1] + q[2] * q[3]);
-        a32 =   2.0f * (q[1] * q[3] - q[0] * q[2]);
-        a33 =   q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3];
-        float sinp = a32;
-        if (fabsf(sinp) >= 1)
-        	pitch = copysign(M_PI/2,sinp);
-        else
-        	pitch =  asin(sinp);
-        //pitch = -asinf(a32);
-        roll  = atan2f(a31, a33);
-        yaw   = atan2f(a12, a22);
-        pitch *= 180.0f / pi;
-        yaw = atan2f(sinf(yaw),cosf(yaw));
-        yaw   *= 180.0f / pi;
-       	roll  *= 180.0f / pi;
-        
-        yaw2 += gd*deltaT*RAD_TO_DEG;
-        yaw3 = atan2f(me,mn)*RAD_TO_DEG;
-        //print_Gyro();Serial.print(",");
         Serial.print(yaw2);
         Serial.print(",");
         Serial.print(yaw3);
         Serial.print(",");
         print_roll_pitch_yaw();Serial.println("");
-        // print_Gyro();Serial.print(",");
-        // print_Acc();Serial.print(",");
-        // print_Mag();Serial.println("");
-
 }      
 void print_Gyro(void){
     //Serial.print("Yaw, Pitch, Roll: ");
@@ -130,4 +114,80 @@ void print_roll_pitch_yaw() {
     Serial.print(pitch);
     Serial.print(",");
     Serial.print(yaw);
+}
+
+void update_quaternion (void){
+            q[0] = q0;
+        q[1] = q1;
+        q[2] = q2;
+        q[3] = q3;
+        a12 =   2.0f * (q[1] * q[2] + q[0] * q[3]);
+        a22 =   q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
+        a31 =   2.0f * (q[0] * q[1] + q[2] * q[3]);
+        a32 =   2.0f * (q[1] * q[3] - q[0] * q[2]);
+        a33 =   q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3];
+        float sinp = a32;
+        if (fabsf(sinp) >= 1)
+        	pitch = copysign(M_PI/2,sinp);
+        else
+        	pitch =  asin(sinp);
+        //pitch = -asinf(a32);
+        roll  = atan2f(a31, a33);
+        yaw   = atan2f(a12, a22);
+        pitch *= 180.0f / pi;
+        yaw = atan2f(sinf(yaw),cosf(yaw));
+        yaw   *= 180.0f / pi;
+       	roll  *= 180.0f / pi;
+        
+        yaw2 += gd*deltaT*RAD_TO_DEG;
+        yaw3 = atan2f(me,mn)*RAD_TO_DEG;
+        //print_Gyro();Serial.print(",");
+
+}
+
+void read_GPS (void){
+    Serial.print(F(" LAT=")); Serial.print(atof(pdop.value())/100,7);
+  Serial.print(F("\tLON=")); Serial.println(atof(hdop.value())/100,7);
+  delay(100);
+
+  while (ss.available() > 0)
+    gps.encode(ss.read());
+
+
+
+  Serial.print(F("  Date/Time: "));
+  if (gps.date.isValid())
+  {
+    Serial.print(gps.date.month());
+    Serial.print(F("/"));
+    Serial.print(gps.date.day());
+    Serial.print(F("/"));
+    Serial.print(gps.date.year());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.print(F(" "));
+  if (gps.time.isValid())
+  {
+    if (gps.time.hour() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.hour());
+    Serial.print(F(":"));
+    if (gps.time.minute() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.minute());
+    Serial.print(F(":"));
+    if (gps.time.second() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.second());
+    Serial.print(F("."));
+    if (gps.time.centisecond() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.centisecond());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.println();
 }

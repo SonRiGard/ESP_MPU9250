@@ -835,6 +835,46 @@ void Calib_magnetometer()
     Mag_y_scale = avg_rad / ((float)scale[1]);
     Mag_z_scale = avg_rad / ((float)scale[2]);
 }
+void read_sensor_9dof(void){
+    //read raw data
+	uint8_t data[14];
+	uint8_t mpu_address = MPU9250_ADDRESS;
+
+    read_bytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 14, &data[0]);
+
+	/*-------- Accel ---------*/
+	Accel_x = (int16_t)((int16_t)( data[0] << 8 ) | data[1]);
+	Accel_y = (int16_t)((int16_t)( data[2] << 8 ) | data[3]);
+	Accel_z = (int16_t)((int16_t)( data[4] << 8 ) | data[5]);
+
+	/*-------- Gyrometer --------*/
+	Gyro_x = (int16_t)((int16_t)( data[8] << 8  ) | data[9]);
+	Gyro_y = (int16_t)((int16_t)( data[10] << 8 ) | data[11]);
+	Gyro_z = (int16_t)((int16_t)( data[12] << 8 ) | data[13]);
+
+	Accel_X = 10*(float)((int32_t)Accel_x - Accel_x_bias)/(float)accel_sensitivity;
+	Accel_Y = 10*(float)((int32_t)Accel_y - Accel_y_bias)/(float)accel_sensitivity;
+	Accel_Z = 10*(float)((int32_t)Accel_z - Accel_z_bias)/(float)accel_sensitivity ;
+
+	Gyro_X =  (float)(((int32_t)Gyro_x - Gyro_x_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
+	Gyro_Y =  (float)(((int32_t)Gyro_y - Gyro_y_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
+	Gyro_Z =  (float)(((int32_t)Gyro_z - Gyro_z_bias)/(float)gyro_sensitivity)*M_PI/180.0f;
+    
+	// Get data of Magnetometer
+#ifdef MPU6050_AND_MAG
+	Get_magnetometer();
+#endif 
+    an = -Accel_X;
+    ae = +Accel_Y;
+    ad = +Accel_Z;
+    gd = -Gyro_Z;
+    gn = +Gyro_X;
+    ge = -Gyro_Y;
+    mn = +Mag_Y;
+    me = +Mag_X;
+    md = -Mag_Z;
+}
+
 	
 void Process_IMU()
 {
@@ -866,8 +906,8 @@ void Process_IMU()
         ae = +Accel_Y;
         ad = +Accel_Z;
         gd = -Gyro_Z;
-        gn = +Gyro_X+0.042*gd;
-        ge = -Gyro_Y+0.016*gd;
+        gn = +Gyro_X;
+        ge = -Gyro_Y;
         mn = +Mag_Y;
         me = +Mag_X;
         md = -Mag_Z;

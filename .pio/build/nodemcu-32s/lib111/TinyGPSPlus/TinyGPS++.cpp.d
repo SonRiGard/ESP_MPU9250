@@ -1,7 +1,6 @@
-.pio/build/nodemcu-32s/libd18/EspSoftwareSerial/SoftwareSerial.cpp.o: \
- .pio/libdeps/nodemcu-32s/EspSoftwareSerial/src/SoftwareSerial.cpp \
- .pio/libdeps/nodemcu-32s/EspSoftwareSerial/src/SoftwareSerial.h \
- .pio/libdeps/nodemcu-32s/EspSoftwareSerial/src/circular_queue/circular_queue.h \
+.pio/build/nodemcu-32s/lib111/TinyGPSPlus/TinyGPS++.cpp.o: \
+ .pio/libdeps/nodemcu-32s/TinyGPSPlus/src/TinyGPS++.cpp \
+ .pio/libdeps/nodemcu-32s/TinyGPSPlus/src/TinyGPS++.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp_arduino_version.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/freertos/FreeRTOS.h \
@@ -131,5 +130,4 @@
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/esp_flash_err.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
- C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
- .pio/libdeps/nodemcu-32s/EspSoftwareSerial/src/circular_queue/Delegate.h
+ C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h

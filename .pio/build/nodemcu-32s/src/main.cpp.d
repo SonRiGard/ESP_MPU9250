@@ -137,4 +137,6 @@
  .pio/libdeps/nodemcu-32s/MPU9250/MPU9250/MPU9250RegisterMap.h \
  .pio/libdeps/nodemcu-32s/MPU9250/MPU9250/QuaternionFilter.h \
  C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
- C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h
+ C:/Users/heozu/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
+ .pio/libdeps/nodemcu-32s/TinyGPSPlus/src/TinyGPSPlus.h \
+ .pio/libdeps/nodemcu-32s/TinyGPSPlus/src/TinyGPS++.h
