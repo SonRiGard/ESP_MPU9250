@@ -10,7 +10,9 @@ float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 float a12, a22, a31, a32, a33;
 extern float roll,yaw,pitch;
 
-
+extern float an ,ae, ad ; 
+float lin_acc[3]={0,0,0};
+float pos_x=0.0,pos_y=0.0,pos_z=0.0;
 uint32_t newTime{0}, oldTime{0};
 extern float deltaT;
 
@@ -32,10 +34,15 @@ void print_Gyro(void);
 void print_Acc(void);
 void print_Mag(void);
 void read_GPS (void);
+void Init_GPS(void);
+void Position (void);
+void print_position(void);
+void update_quaternion (void);
+void print_linear_acc(void) ;
 
 void setup() {
     Serial.begin(9600);
-    /*
+
     Wire.begin();
     delay(5000);
 
@@ -46,15 +53,11 @@ void setup() {
         }
     }
     oldTime=micros();
-*/
+
     // print_calibration();
 
-    ss.begin(GPSBaud);
-    Serial.println(F("UsingCustomFields.ino"));
-    Serial.println(F("Demonstrating how to extract any NMEA field using TinyGPSCustom"));
-    Serial.print(F("Testing TinyGPS++ library v. ")); Serial.println(TinyGPSPlus::libraryVersion());
-    Serial.println(F("by Mikal Hart"));
-    Serial.println();
+    //Init_GPS();
+
 
 }
 
@@ -67,7 +70,6 @@ void loop()
         //        prev_ms = millis();
         //     }
         // }
-
         newTime = micros();
         deltaT = newTime - oldTime;
         // Serial.print(newTime);       Serial.print(",");
@@ -75,14 +77,22 @@ void loop()
         oldTime = newTime;
         deltaT = deltaT * 0.001 * 0.001;
 
+        mpu.Process_IMU();
+        update_quaternion();
+        Position();
+        
         //mpu.read_sensor_9dof();
-        read_GPS ();
+        //read_GPS ()
 
-        Serial.print(yaw2);
-        Serial.print(",");
-        Serial.print(yaw3);
-        Serial.print(",");
-        print_roll_pitch_yaw();Serial.println("");
+        // Serial.print(yaw2);
+        // Serial.print(",");
+        // Serial.print(yaw3);
+        // Serial.print(",");
+        //print_position();
+       // Serial.print(",");
+        //print_roll_pitch_yaw();Serial.println("");
+      print_linear_acc();Serial.println("");
+
 }      
 void print_Gyro(void){
     //Serial.print("Yaw, Pitch, Roll: ");
@@ -117,7 +127,7 @@ void print_roll_pitch_yaw() {
 }
 
 void update_quaternion (void){
-            q[0] = q0;
+        q[0] = q0;
         q[1] = q1;
         q[2] = q2;
         q[3] = q3;
@@ -142,6 +152,11 @@ void update_quaternion (void){
         yaw2 += gd*deltaT*RAD_TO_DEG;
         yaw3 = atan2f(me,mn)*RAD_TO_DEG;
         //print_Gyro();Serial.print(",");
+        //getlinear acc
+
+        lin_acc[0] = an + a31;
+        lin_acc[1] = ae + a32;
+        lin_acc[2] = ad - a33;
 
 }
 
@@ -190,4 +205,42 @@ void read_GPS (void){
   }
 
   Serial.println();
+}
+
+void Init_GPS(void){
+    ss.begin(GPSBaud);
+    Serial.println(F("UsingCustomFields.ino"));
+    Serial.println(F("Demonstrating how to extract any NMEA field using TinyGPSCustom"));
+    Serial.print(F("Testing TinyGPS++ library v. ")); Serial.println(TinyGPSPlus::libraryVersion());
+    Serial.println(F("by Mikal Hart"));
+    Serial.println();
+}
+
+void Position (void) {
+    pos_x = 0.5 * lin_acc[0] * deltaT * deltaT*1000000;
+    pos_y = 0.5 * lin_acc[1] * deltaT * deltaT*1000000;
+    pos_z = 0.5 * lin_acc[2] * deltaT * deltaT*1000000;
+}
+
+void print_position(void) {
+    Serial.print(pos_x);
+    Serial.print(",");
+    Serial.print(pos_y);
+    Serial.print(",");
+    Serial.print(pos_z);
+}
+
+void print_linear_acc(void) {
+    Serial.print(lin_acc[0]);
+    Serial.print(",");
+    Serial.print(lin_acc[1]);
+    Serial.print(",");
+    Serial.print(lin_acc[2]);
+    Serial.print(",");
+
+    Serial.print(an);
+    Serial.print(",");
+    Serial.print(ae);
+    Serial.print(",");
+    Serial.print(ad);
 }
